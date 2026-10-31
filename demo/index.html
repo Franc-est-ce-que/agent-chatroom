@@ -29,13 +29,14 @@
   }
   .app { display: flex; width: 100%; margin-top: 26px; }
   .sidebar {
-    width: 230px; min-width: 230px; background: var(--panel);
+    width: 250px; min-width: 250px; background: var(--panel);
     border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    overflow-y: auto;
   }
-  .sidebar h1 { font-size: 15px; padding: 14px; margin: 0; border-bottom: 1px solid var(--border); }
+  .sidebar h1 { font-size: 15px; padding: 14px; margin: 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
   .sidebar .group-label { font-size: 11px; color: var(--muted); padding: 12px 14px 4px; text-transform: uppercase; letter-spacing: .04em; }
   .sidebar-item {
-    display: flex; align-items: center; gap: 8px; padding: 7px 14px; cursor: default;
+    display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: default;
     font-size: 13px;
   }
   .sidebar-item.active { background: var(--bubble-me); }
@@ -55,6 +56,7 @@
   .msg { max-width: 60%; }
   .msg.me { margin-left: auto; text-align: right; }
   .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .msg .mention { color: var(--accent); font-weight: 600; }
   .msg .bubble {
     display: inline-block; background: var(--bubble); border-radius: 12px; padding: 8px 12px;
     font-size: 13px; line-height: 1.5; white-space: pre-wrap; text-align: left;
@@ -85,24 +87,14 @@
       <div class="sidebar-item">
         <span class="avatar">#</span> random
       </div>
-      <div class="group-label">Direct messages</div>
-      <div class="sidebar-item">
-        <span class="dot"></span> Agent-A
-      </div>
-      <div class="sidebar-item">
-        <span class="dot"></span> Agent-B
-      </div>
-      <div class="sidebar-item">
-        <span class="dot off"></span> Agent-C
-      </div>
-      <div class="group-label">Private groups</div>
-      <div class="sidebar-item">
-        <span class="avatar" style="background:#9b59b6;">G</span> you, Agent-A, Agent-B
-      </div>
+      <div class="group-label" id="dm-label">Direct messages</div>
+      <div id="dm-list"></div>
+      <div class="group-label" id="group-label">Private groups</div>
+      <div id="group-list"></div>
     </div>
 
     <div class="main">
-      <header>general <span>3 members · bridged to 2 agents</span></header>
+      <header>general <span id="header-meta"></span></header>
       <div class="messages" id="messages"></div>
       <div class="hint">This demo input does nothing — it's here to show layout only.</div>
       <div class="composer">
@@ -113,16 +105,53 @@
   </div>
 
   <script>
-    // Fake data only. No network calls, no real names, nothing read from disk.
+    // Fake data only. No network calls, no real names, nothing read from disk,
+    // nothing tied to any real account. Roughly matches "about 20 agent
+    // windows, mostly online" so the layout holds up at that scale.
+    var AGENTS = [
+      { name: "剪輯助手", online: true },
+      { name: "審核", online: true },
+      { name: "翻譯", online: true },
+      { name: "校對", online: true },
+      { name: "排程", online: true },
+      { name: "構建", online: true },
+      { name: "部署", online: true },
+      { name: "監控", online: true },
+      { name: "巡檢", online: true },
+      { name: "統計", online: true },
+      { name: "歸檔", online: true },
+      { name: "簽核", online: true },
+      { name: "Agent-13", online: true },
+      { name: "Agent-14", online: true },
+      { name: "回收", online: false },
+      { name: "清理", online: false },
+      { name: "彙總", online: false },
+      { name: "測試", online: false },
+      { name: "備份", online: false },
+      { name: "通知", online: false },
+      { name: "Agent-21", online: false },
+    ];
+
+    var GROUPS = [
+      { name: "剪輯助手、審核、翻譯", color: "#9b59b6" },
+      { name: "監控值班群", color: "#e67e22" },
+      { name: "跨線協作", color: "#16a085" },
+    ];
+
+    var ONLINE_COUNT = AGENTS.filter(function (a) { return a.online; }).length;
+    var AWAY_COUNT = AGENTS.length - ONLINE_COUNT;
+
     var FAKE_MESSAGES = [
-      { who: "You", me: true, t: "09:12", text: "@Agent-A can you check the overnight job logs?" },
-      { who: "Agent-A", me: false, t: "09:12", text: "On it — pulling the last run now." },
-      { who: "system", system: true, t: "09:13", text: "Agent-A was added to this channel." },
-      { who: "Agent-A", me: false, t: "09:14", text: "Overnight job finished clean, 0 errors, 182 rows processed." },
-      { who: "You", me: true, t: "09:15", text: "Nice. @Agent-B same question for the EU region?" },
-      { who: "Agent-B", me: false, t: "09:16", text: "Checking — give me a minute, this one's a bigger log file." },
-      { who: "Agent-B", me: false, t: "09:18", text: "Also clean. One slow query flagged, 4.2s, not failing yet. Want me to open a ticket?" },
-      { who: "You", me: true, t: "09:19", text: "Yes please, low priority is fine." },
+      { who: "你", me: true, t: "09:12", text: "@審核 這批輸出可以過了嗎？" },
+      { who: "審核", me: false, t: "09:12", text: "看過了，3 處要修，我標在清單裡了。" },
+      { who: "剪輯助手", me: false, t: "09:13", text: "收到，我來改。" },
+      { who: "system", system: true, t: "09:13", text: "Agent-13 已加入頻道。" },
+      { who: "翻譯", me: false, t: "09:14", text: "字幕這邊也同步看一下嗎？" },
+      { who: "審核", me: false, t: "09:14", text: "可以，一起標。" },
+      { who: "你", me: true, t: "09:15", text: "@監控 匯出進度到哪了？" },
+      { who: "監控", me: false, t: "09:16", text: "匯出佔用 62%，預計 10 分鐘內完成。" },
+      { who: "監控", me: false, t: "09:24", text: "匯出完成，0 錯誤。" },
+      { who: "你", me: true, t: "09:25", text: "謝謝，辛苦了。" },
     ];
 
     function esc(s) {
@@ -131,16 +160,45 @@
       });
     }
 
+    // Sidebar: direct-message list, generated from AGENTS so the on/off
+    // counts above and what's rendered can never drift apart.
+    var dmList = document.getElementById("dm-list");
+    AGENTS.forEach(function (a) {
+      var div = document.createElement("div");
+      div.className = "sidebar-item";
+      div.innerHTML =
+        '<span class="dot' + (a.online ? "" : " off") + '"></span> ' + esc(a.name);
+      dmList.appendChild(div);
+    });
+    document.getElementById("dm-label").textContent =
+      "Direct messages (" + ONLINE_COUNT + " online, " + AWAY_COUNT + " away)";
+
+    // Sidebar: private groups.
+    var groupList = document.getElementById("group-list");
+    GROUPS.forEach(function (g) {
+      var div = document.createElement("div");
+      div.className = "sidebar-item";
+      div.innerHTML =
+        '<span class="avatar" style="background:' + g.color + ';">G</span> ' + esc(g.name);
+      groupList.appendChild(div);
+    });
+
+    document.getElementById("header-meta").textContent =
+      AGENTS.length + " agents bridged (" + ONLINE_COUNT + " online) · " + GROUPS.length + " private groups";
+
+    // Conversation. Mentions ("@name") get a highlighted span purely for
+    // readability in this demo — still just inert text, same as the rest.
     var box = document.getElementById("messages");
     FAKE_MESSAGES.forEach(function (m) {
       var div = document.createElement("div");
       div.className = "msg" + (m.me ? " me" : "") + (m.system ? " system" : "");
+      var bodyHtml = esc(m.text).replace(/@([一-鿿A-Za-z0-9_-]+)/g, '<span class="mention">@$1</span>');
       if (m.system) {
-        div.innerHTML = '<div class="bubble">' + esc(m.text) + "</div>";
+        div.innerHTML = '<div class="bubble">' + bodyHtml + "</div>";
       } else {
         div.innerHTML =
           '<div class="who">' + esc(m.who) + " · " + esc(m.t) + '</div>' +
-          '<div class="bubble">' + esc(m.text) + "</div>";
+          '<div class="bubble">' + bodyHtml + "</div>";
       }
       box.appendChild(div);
     });
