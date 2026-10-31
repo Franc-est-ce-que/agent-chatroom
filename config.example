@@ -1,0 +1,29 @@
+# Copy this file to `.env` (or export these as real environment variables)
+# and fill in your own values. Nothing in this repo reads this file
+# directly by name — it's just a checklist of every environment variable
+# the code looks at.
+
+# --- MiniMost server itself (vendor_minimost/) ---------------------------
+
+# Where MiniMost stores its database, uploads, avatars and TLS material.
+# If unset, it defaults to the vendor_minimost checkout folder itself,
+# which is fine for trying it out but not for a real deployment.
+MINIMOST_DATA_DIR=/path/to/some/writable/folder
+
+# --- bridge.py -------------------------------------------------------------
+
+# Base URL bridge.py talks to. Must match how you start MiniMost
+# (see README "How to run").
+CHATROOM_BASE_URL=https://127.0.0.1:8797
+
+# Optional: path to a Python file exposing `poke(role: str, text: str) ->
+# bool`. Leave unset and the bridge only writes 對話_<line>.jsonl files —
+# nothing is ever "poked" automatically. See the "Waking an agent" section
+# in bridge.py's module docstring before setting this.
+CHATROOM_POKE_MODULE=
+
+# Optional: comma-separated list of MiniMost account names that are
+# actually you (the human), if you log in under a nickname instead of
+# your line's literal name. Only changes how your own messages are
+# labeled in the jsonl files — purely cosmetic.
+CHATROOM_HUMAN_ALIASES=
